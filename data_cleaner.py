@@ -85,6 +85,7 @@ class DataCleaner(object):
    
     def collapse_feature(self, features, data, flag=False):
         df = self.__choose_df__(data)
+        df = self.breakdown_list_types(df, flag)
         for feature in features:
             try:
                 feature_df = df[feature].apply(pd.Series)
