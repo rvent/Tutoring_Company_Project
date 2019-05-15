@@ -183,8 +183,8 @@ class TutoringDataCleaner(DataCleaner):
  
     def find_related_tutoring_keywords(self, data):
         arr = self.get_unique("title", data)
-        hot_words = ["Tutor", "Child", "Kids", "Education", "Community", "Cultural", "Camps", 
-                     "Preschool", "Clubs", "Prep", "Homework"]
+        hot_words = ["Tutor", "Education", "Community", "Camps", 
+                     "Preschool", "Prep", "Homework", "Test"]
         return self.find_related_keywords(hot_words, arr)
     
     def title_encoding(self, data, flag=False):
