@@ -2,95 +2,114 @@ import pandas as pd
 import numpy as np
 
 class DataCleaner(object):
+    # base class for cleaning dataframes
     def __init__(self, data):
+        """Takes in list of dictionaries"""
         self._data = data
-        self._dataframe = None 
-        self._original = None
+        self._dataframe = None
       
     @property
     def data(self):
+        """Getter for the input data"""
         return self._data
     
     @data.setter
     def data(self, datum):
+        """Setter for the data to clean"""
         self._data.extend(datum)
         
     @property
     def dataframe(self):
+        """Getter for cleaned dataframe"""
         return self._dataframe
     
     @dataframe.setter
     def dataframe(self, df):
+        """Setter for cleaned dataframe"""
         if type(df) == pd.core.frame.DataFrame:
             self._dataframe = df
         else:
             raise Exception("Must be a pandas dataframe!")
-    
-    @property
-    def original(self):
-        return self._original
-    
-    def __choose_df__(self, dataframe):
-        if type(dataframe) == pd.core.frame.DataFrame:
-            return dataframe.copy()
-        else:
-            return self.dataframe.copy()
         
     def __change__(self, dataframe, change):
+        """
+        Takes in a dataframe as dataframe
+        takes in a bool as change
+        returns a copy of a dataframe
+        """
         if change:
             self.dataframe = dataframe
             return self.dataframe
         else:
             return dataframe
             
-    def parse_data(self, key):
+    def parse_data(self, data, key):
+        """
+        Takes in a list of dictionaries as data
+        a key in a dictionary as key
+        returns a dataframe from the dictionaries in data
+        """
         info = []
-        for datum in self.data:
+        for datum in data:
             if key in datum:
                 info.extend(datum[key])
         self.dataframe = pd.DataFrame(info)
-        self._original = self.dataframe
         return self.dataframe
     
-    def view_only_certain_type(self, datatype, data=None):
-        df = self.__choose_df__(data)
+    def view_only_certain_type(self, dataframe, datatype):
+        """
+        Takes in a dataframe as dataframe
+        takes in a type class as datatype not as a string
+        return a dataframe with only the datatype input
+        """
+        df = dataframe.copy()
         view = pd.DataFrame(df.dtypes)
         view = view[view[0] != datatype]
         view = df.drop(view.index, axis=1)
         return view
     
-    def view_item_type(self, data=None):
-        df = self.__choose_df__(data)
+    def view_item_type(self, dataframe):
+        """
+        Takes in a dataframe as dataframe
+        returns a dataframe with the type of each item in the dataframe
+        """
+        df = dataframe.copy()
         view = df.apply(lambda x: x.apply(type))
         return view
     
-    def columns_to_break_down(self, type_lst, data=None, hide=False):
+    def columns_to_break_down(self, dataframe, hide=False):
+        """
+        Takes in a dataframe as dataframe
+        takes in an optional bool as hide
+        returns a the names of the columns that contains the type in type_lst
+        """
         breakdown = np.array([])
-        checker = self.view_item_type(data)
+        checker = self.view_item_type(dataframe)
+        type_lst = [list, dict]
         for arg in type_lst:
+            # check the type with the dataframe with only types
             want = pd.DataFrame(checker[checker == arg].count())
             res = np.array(want[want[0] > 0].index)
-            breakdown = np.union1d(breakdown, res)
+            breakdown = np.union1d(breakdown, res)  
+            
+            # print the type and the columns if hide is False
             if not hide:
                 print(arg)
                 print(res, "\n")
         return breakdown
             
-    def breakdown_list_types(self, data=None, flag=False):
-        bd = self.columns_to_break_down([list], hide=True)
-        df = self.__choose_df__(data)
-        for col in bd:
-            df[col] = df[col].apply(lambda x: list(np.array(x).flatten()))
-        return self.__change__(df, flag)
-   
-    def collapse_feature(self, features, data, flag=False):
-        df = self.__choose_df__(data)
-<<<<<<< HEAD
-        df = self.breakdown_list_types(df, flag)
-=======
->>>>>>> master
+    def collapse_feature(self, dataframe, flag=False):
+        """
+        Takes in a dataframe as dataframe
+        takes in a list of columns with list and dict entries as features
+        takes in an optional bool as flag
+        returns a dataframe with extra features extracted from the features
+        """
+        df = dataframe.copy()
+        features = self.columns_to_break_down(dataframe, True)
         for feature in features:
             try:
+                # creates extra features from columns with list and dict entries
                 feature_df = df[feature].apply(pd.Series)
                 col = [f"{feature}_{i}" for i in range(0, len(feature_df.columns))]
                 feature_df.columns =  col
@@ -100,8 +119,8 @@ class DataCleaner(object):
                 print(f"No feature: {feature}")
         return self.__change__(df, flag)
     
-    def set_up_categories(self, cate, data, flag=False):
-        df = self.__choose_df__(data)
+    def set_up_categories(self, dataframe, cate, flag=False):
+        df = dataframe.copy()
         categories = [cat for cat in data.columns if cat.startswith(cate)]
         count = 0
         for category in categories:
@@ -129,10 +148,10 @@ class DataCleaner(object):
                     break
         return lst
         
-    def sim_column_encoding(self, data, related_keywords, cols, flag=False):
+    def sim_column_encoding(self, dataframe, related_keywords, cols, flag=False):
         count = 0
-        columns = [cat for cat in data.columns if cat.startswith(cols)]
-        data = self.__choose_df__(data)
+        columns = [cat for cat in dataframe.columns if cat.startswith(cols)]
+        data = dataframe.copy()
         for col in columns:
             encoding = []
             for item in data[col].astype(str):
@@ -170,29 +189,23 @@ class TutoringDataCleaner(DataCleaner):
     
     def __init__(self, data, complete=False):
         DataCleaner.__init__(self, data)
-        self._collapse_features = ['categories', 'coordinates', 'location']
         if complete:
-            self.dataframe = self.clean_entry()            
-    
-    def parse(self):
-        return self.parse_data("businesses")
+            self.dataframe = self.clean_entry()
+        
+    def parse(self, data):
+        return self.parse_data(data, "businesses")
    
     def collapse(self, data, flag=False):
-        df = self.collapse_feature(self._collapse_features, data)
+        df = self.collapse_feature(data)
         df["coordinates"] = tuple(zip(df.coordinates_0, df.coordinates_1))
         df.drop(["location_7", "distance", "image_url", "alias", "coordinates_0", 
-                   "coordinates_1", "transactions"], axis=1, inplace=True)
+                   "coordinates_1"], axis=1, inplace=True)
         return self.set_up_categories("categories", df, flag)
  
     def find_related_tutoring_keywords(self, data):
         arr = self.get_unique("title", data)
-<<<<<<< HEAD
         hot_words = ["Tutor", "Education", "Community", "Camps", 
                      "Preschool", "Prep", "Homework", "Test"]
-=======
-        hot_words = ["Tutor", "Child", "Kids", "Education", "Community", "Cultural", "Camps", 
-                     "Preschool", "Clubs", "Prep", "Homework"]
->>>>>>> master
         return self.find_related_keywords(hot_words, arr)
     
     def title_encoding(self, data, flag=False):
@@ -239,7 +252,6 @@ class ReviewDataCleaner(DataCleaner):
     
     def clean_review(self, info):
         cols = ["business_name", "user_name", "user_location","date", "review", "star_rating", "user_stats"]
-        stats_col_name = ["friend_count", "review_count", "photo_count", "elite_status"]
         keys = list(info.keys())
         vals = list(info.values())
         data = []
@@ -251,15 +263,33 @@ class ReviewDataCleaner(DataCleaner):
                 else:
                     data.append([keys[i], vals[i]["User"][j][0],  np.nan, vals[i]["Rev_Date"][j][:10], 
                              vals[i]["User_Rev"][j], vals[i]["Star_Rating"][j], vals[i]["User_Stat"][j]])
-        user_df_test = pd.DataFrame(data, columns=cols)
-        user_df_test = self.collapse_feature(["user_stats"], user_df_test) 
-        user_df_test.rename(columns= dict(zip([f"user_stats_{i}" for i in range(4)], stats_col_name)), inplace=True) 
-        return user_df_test
+        user_df = pd.DataFrame(data, columns=cols)
+        return user_df
     
     def clean_all_reviews(self, info):
+        revs_df = pd.DataFrame()
+        stats_col_name = ["friend_count", "review_count", "photo_count", "elite_status"]
         for dic in info:
-            self._review_df = pd.concat([self._review_df, self.clean_review(dic)], axis=0, sort=True, ignore_index=True)
-        return self._review_df
+            revs_df = pd.concat([revs_df, self.clean_review(dic)], axis=0, sort=True, ignore_index=True)
+        revs_df = self.collapse_feature(["user_stats"], revs_df) 
+        revs_df.rename(columns=dict(zip([f"user_stats_{i}" for i in range(4)], stats_col_name)), inplace=True)
+        return revs_df
+    
+    def organize_reviews(self, df):
+        name = ""
+        count = 0
+        new_rev = pd.DataFrame()
+        for _, row in df.iterrows():
+            if name != row.business_name+f"{count}":
+                count += 1
+                row.business_name = row.business_name + f"{count}"
+                name = row.business_name
+                new_rev = pd.concat([new_rev, pd.DataFrame(row)], axis=1)
+            else:
+                row.business_name = row.business_name + f"{count}"
+                new_rev = pd.concat([new_rev, pd.DataFrame(row)], axis=1)
+        new_rev = new_rev.T.drop(["date"], axis=1)
+        return new_rev
     
 
 class AreaDataCleaner(DataCleaner):
