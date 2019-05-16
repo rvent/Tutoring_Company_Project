@@ -38,29 +38,21 @@ class DataCleaner(object):
         returns a copy of a dataframe
         """
         if change:
-            # set cleaner dataframe as input dataframe
             self.dataframe = dataframe
             return self.dataframe
         else:
-            # return the input dataframe
             return dataframe
             
     def parse_data(self, data, key):
         """
         Takes in a list of dictionaries as data
-        takes in a key string of a dictionary as key
+        a key in a dictionary as key
         returns a dataframe from the dictionaries in data
         """
-        # initialize an empty list
         info = []
-        
-        # extracts all the values associated with the key
-        # add them to info
         for datum in data:
             if key in datum:
                 info.extend(datum[key])
-                
-        # set the cleaner's dataframe as the dataframe of the info list
         self.dataframe = pd.DataFrame(info)
         return self.dataframe
     
@@ -91,15 +83,9 @@ class DataCleaner(object):
         takes in an optional bool as hide
         returns a the names of the columns that contains the type in type_lst
         """
-        # initialize an empty numpy array
         breakdown = np.array([])
-        
-        # create a dataframe of the type of the datafram elements
         checker = self.view_item_type(dataframe)
-        
-        # list of types that can be parsed out further 
         type_lst = [list, dict]
-        
         for arg in type_lst:
             # check the type with the dataframe with only types
             want = pd.DataFrame(checker[checker == arg].count())
@@ -112,18 +98,34 @@ class DataCleaner(object):
                 print(res, "\n")
         return breakdown
             
+<<<<<<< HEAD
+    def breakdown_list_types(self, data=None, flag=False):
+        bd = self.columns_to_break_down([list], hide=True)
+        df = self.__choose_df__(data)
+        for col in bd:
+            df[col] = df[col].apply(lambda x: list(np.array(x).flatten()))
+        return self.__change__(df, flag)
+   
+    def collapse_feature(self, features, data, flag=False):
+        df = self.__choose_df__(data)
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+        df = self.breakdown_list_types(df, flag)
+=======
+>>>>>>> master
+>>>>>>> cleaning_branch
+=======
     def collapse_feature(self, dataframe, flag=False):
         """
         Takes in a dataframe as dataframe
+        takes in a list of columns with list and dict entries as features
         takes in an optional bool as flag
         returns a dataframe with extra features extracted from the features
         """
-        # create a copy of the input dataframe
         df = dataframe.copy()
-        
-        # creates a list of columns with list and dict entries as features
         features = self.columns_to_break_down(dataframe, True)
-        
+>>>>>>> cleaning_branch
         for feature in features:
             try:
                 # creates extra features from columns with list and dict entries
@@ -136,77 +138,53 @@ class DataCleaner(object):
                 print(f"No feature: {feature}")
         return self.__change__(df, flag)
     
-    def get_unique(self, col_start, data):
-        """
-        Takes in the start of column name string as col_start
-        takes in a dataframe as data
-        returns an array with all unique entries in the column
-        """
-        # initialize an empty array
+    def set_up_categories(self, dataframe, cate, flag=False):
+        df = dataframe.copy()
+        categories = [cat for cat in data.columns if cat.startswith(cate)]
+        count = 0
+        for category in categories:
+            df_change = df[category].apply(pd.Series)
+            df_change.drop([0], axis=1, inplace=True)
+            df_change.columns = [f'{col}_{count}' for col in df_change.columns]
+            count += 1
+            df = pd.concat([df, df_change], axis=1)
+        df.drop(categories, axis=1, inplace=True)
+        return self.__change__(df, flag)
+    
+    def get_unique(self, cate, data):
         arr_comb_all = np.array([])
-        
-        # create a list of columns that starts with col_start
-        cat_array = [cat for cat in data.columns if cat.startswith(col_start)]
-        
-        # create an array with the union of itself and unique items in the column
+        cat_array = [cat for cat in data.columns if cat.startswith(cate)]
         for category in cat_array:
             arr_comb_all = np.union1d(data[category].unique().astype(str), arr_comb_all)
-            
         return arr_comb_all
     
     def find_related_keywords(self, words, arr):
-        """
-        Takes in a list of strings as words
-        takes in an array of strings as arr
-        return a list of word from arr that contain word from words
-        """
-        # initialize an empty list
         lst = []
-        
-        # check if the item in the array contains a word in words
-        # add them to a list
         for item in arr:
             for word in words:
                 if word in item:
                     lst.append(item)
-                    # add a break
-                    # no need to continue after finding a match
                     break
         return lst
-    
-    # helper function returns 1 if related word in column else return 0
-    def encode_column(self, item, related_keywords):
-        """
-        Takes in a string as item
-        takes in a list of strings as related_keywords
-        return 1 if item contained a related_keyword or 0 if not
-        """
-        for key in related_keywords:
-            if key in item:
-                return 1
-
-        return 0
-    
-    def sim_column_encoding(self, dataframe, related_keywords, col_start, flag=False):
-        """
-        Takes in a dataframe as dataframe
-        takes in a list of strings as related_keywords
-        takes in the start of column name string as col_start
-        returns a dataframe with a new column that has a 1 or 0
-        """
         
-        # initialize a count at 0
+    def sim_column_encoding(self, dataframe, related_keywords, cols, flag=False):
         count = 0
-    
-        # create a list of columns that starts with col_start
-        columns = [cat for cat in dataframe.columns if cat.startswith(col_start)]
-        
-        # create a copy of the input dataframe
-        data = dataframe.copy().astype(str)
-        
-        # create new columns with 0 or 1
+        columns = [cat for cat in dataframe.columns if cat.startswith(cols)]
+        data = dataframe.copy()
         for col in columns:
-            data[f"{col_start}_{count}_code"] = data[col].apply(lambda x: self.encode_column(x, related_keywords))
+            encoding = []
+            for item in data[col].astype(str):
+                flag = False
+                for key in related_keywords:
+                    if key in item:
+                        encoding.append(1)
+                        flag = True
+                        break
+                if flag == False:
+                    encoding.append(0)
+                else:
+                    flag = False
+            data[f"{cols}_{count}_code"] = encoding
             count += 1
         return self.__change__(data, flag)
     
@@ -235,37 +213,33 @@ class TutoringDataCleaner(DataCleaner):
         
     def parse(self, data):
         return self.parse_data(data, "businesses")
-    
-    def set_up_categories(self, dataframe, col_start, flag=False):
-        """
-        Takes in a dataframe as dataframe
-        takes in the start of column name string as col_start
-        takes in an optional bool as flag
-        returns a dataframe with the cate columns parsed out
-        """
-        df = dataframe.copy()
-        categories = [cat for cat in df.columns if cat.startswith(col_start)]
-        count = 0
-        for category in categories:
-            df_change = df[category].apply(pd.Series)
-            df_change.drop([0], axis=1, inplace=True)
-            df_change.columns = [f'{col}_{count}' for col in df_change.columns]
-            count += 1
-            df = pd.concat([df, df_change], axis=1)
-        df.drop(categories, axis=1, inplace=True)
-        return self.__change__(df, flag)
    
     def collapse(self, data, flag=False):
         df = self.collapse_feature(data)
         df["coordinates"] = tuple(zip(df.coordinates_0, df.coordinates_1))
         df.drop(["location_7", "distance", "image_url", "alias", "coordinates_0", 
                    "coordinates_1"], axis=1, inplace=True)
-        return self.set_up_categories(df, "categories", flag)
+        return self.set_up_categories("categories", df, flag)
  
     def find_related_tutoring_keywords(self, data):
         arr = self.get_unique("title", data)
+<<<<<<< HEAD
+<<<<<<< HEAD
+        hot_words = ["Tutor", "Child", "Kids", "Education", "Community", "Cultural", "Camps", 
+                     "Preschool", "Clubs", "Prep", "Homework"]
+=======
+<<<<<<< HEAD
         hot_words = ["Tutor", "Education", "Community", "Camps", 
                      "Preschool", "Prep", "Homework", "Test"]
+=======
+        hot_words = ["Tutor", "Child", "Kids", "Education", "Community", "Cultural", "Camps", 
+                     "Preschool", "Clubs", "Prep", "Homework"]
+>>>>>>> master
+>>>>>>> cleaning_branch
+=======
+        hot_words = ["Tutor", "Education", "Community", "Camps", 
+                     "Preschool", "Prep", "Homework", "Test"]
+>>>>>>> cleaning_branch
         return self.find_related_keywords(hot_words, arr)
     
     def title_encoding(self, data, flag=False):
@@ -331,20 +305,10 @@ class ReviewDataCleaner(DataCleaner):
         stats_col_name = ["friend_count", "review_count", "photo_count", "elite_status"]
         for dic in info:
             revs_df = pd.concat([revs_df, self.clean_review(dic)], axis=0, sort=True, ignore_index=True)
-        revs_df = self.collapse_feature(revs_df, ["user_stats"]) 
+        revs_df = self.collapse_feature(["user_stats"], revs_df) 
         revs_df.rename(columns=dict(zip([f"user_stats_{i}" for i in range(4)], stats_col_name)), inplace=True)
-        revs_df = revs_df.fillna(0)
-        revs_df["star_rating"] = revs_df["star_rating"].apply(lambda x: float(x.strip(' itemprop="ratingValue"/>]')))
-        revs_df["friend_count"] = revs_df["friend_count"].apply(lambda x: float(x.strip("friends")))
-        revs_df["review_count"] = revs_df["review_count"].apply(lambda x: float(x.strip("reviews")))
-        revs_df["elite_status"] = revs_df["elite_status"].astype(str).apply(lambda x: self.encode_column(x, "Elite"))
-        revs_df["elite_status"] = [1 if "Elite" in x else revs_df["elite_status"][n] for n, x in enumerate(revs_df["photo_count"].astype(str).to_list())]
-        revs_df["photo_count"] = [float(x.strip("photos")) if "Elite" not in x else 0 for x in revs_df["photo_count"].astype(str)]
         return revs_df
     
-        
-        
-        
     def organize_reviews(self, df):
         name = ""
         count = 0
