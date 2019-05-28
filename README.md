@@ -1,5 +1,5 @@
 # Tutoring_Company_Project
-## Attempting to determine the features of a highly rated tutoring company.
+## Attempting to classify tutoring companies based on Yelp ratings.
 
 # Objective
 In this project,  we will try to determine the ratings of tutoring companies based of information found on yelp.com.
