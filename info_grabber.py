@@ -19,13 +19,14 @@ def automatic_save(flag, item, counter, filename="filename", max_count=100, emai
     if flag:
         if counter % max_count == 0:
             if email_me:
-                emailer.send_email("saved!", "everything is good!")
-            try:
-                pd.DataFrame(item).to_json(f'{filename}.json')
-            except:
-                 emailer.send_email("Error!", "file was unabled to be saved!")
-            finally:
-                print(counter)
+                try:
+
+                    pd.DataFrame(item).to_json(f'{filename}.json')
+                    emailer.send_email("saved!", "everything is good!")
+                except:
+                     emailer.send_email("Error!", "file was unabled to be saved!")
+                finally:
+                    print(counter)
 
 def clean_text(lst, regular=False):
     if regular:
@@ -164,6 +165,7 @@ class YelpScraper(object):
     
     def __init__(self, driver_location):
         self._driver_location = driver_location
+    
             
     def get_specific_data(self, driver, class_name, att="title", get_info="class"):
         elems = driver.find_elements_by_class_name(class_name)
@@ -239,15 +241,21 @@ class TutoringScraper(YelpScraper):
         runs = 0
         size = df.shape[0]
         business_list = []
-        for num in tqdm(range(df.url.shape[0])):
+        for num in tqdm(range(df["url"].shape[0])):
             business = {}
+            print(df["url"])
             try:
+                print(1)
                 count = 0
+                print(2)
                 runs += 1
-                link = df.url[num]
+                print(3)
+                link = df["url"][num]
+                print(link)
                 url = link[:link.index("?")]
+                print(url)
                 driver.get(url) 
-                biz_name = df.name[num]
+                biz_name = df["name"][num]
                 business[biz_name] = {"User": [], "User_Stat" : [], 
                                           "Rev_Date" :[], "User_Rev" : [], 
                                           "Star_Rating" : []}
@@ -270,10 +278,12 @@ class TutoringScraper(YelpScraper):
                         emailer.send_email("Still Running", f"Still Going: {(float(runs)/float(size))*100}% through.") 
                     time.sleep(1)
                 except Exception as e:
+                    print("m")
                     emailer.send_email("Error 1!", str(e) + f" Error for {biz_name} at {runs} runs.")
                     continue
 
             except Exception as e:
+                print("no")
                 pd.DataFrame(business).to_json("scraped_reviews.json")
                 emailer.send_email("Error 2!", e)
                 return business_list
@@ -288,5 +298,68 @@ class TutoringScraper(YelpScraper):
 
     def get_hours(self, df, save_file=False):
         return self.get_certain_info(df, "url", "name", "hours-table", save_file)
+    
+    def get_area_data(self, driver, zipcode):
+        living_area = {zipcode: []}
+        driver.get("https://www.areavibes.com/")
+        element = driver.find_element_by_xpath("//input[@maxlength='160']")
+        try:
+            element.send_keys(zipcode)
+            element = driver.find_element_by_xpath("//button")
+            time.sleep(2)
+            element.click()
+            element = driver.find_element_by_xpath("//a[@class='btn']")
+            time.sleep(1.5)
+            element.click()
+            time.sleep(1)
+            info = driver.find_element_by_xpath("//nav[@class='category-menu']").text.split("\n")
+            living_area[zipcode] = dict(zip(info[::2], info[1::2]))
+            living_area[zipcode].update({"zipcode" : zipcode})
+        except Exception as e:
+            emailer.send_email("Error", f'{e} {zipcode}')
+            return living_area
+        return pd.DataFrame(living_area).T
+        
+    def get_multi_area_data(self, zipcodes):
+        driver = webdriver.Chrome(self._driver_location)
+        df = pd.DataFrame()
+        for i in tqdm(range(len(zipcodes))):
+            zipcode = zipcodes[i]
+            living_area = self.get_area_data(driver, zipcode)
+            i += 1
+            automatic_save(True, living_area, i, filename="livingareainfo", max_count=50, email_me=True)
+            if type(living_area) == pd.core.frame.DataFrame:
+                df = pd.concat([df, living_area], axis=0, sort=False)
+        df.reset_index().drop(["index"], axis=1).to_json("living_area.json")
+        driver.close()
+        return df
+    
+    def get_area_dem(self, driver, state, zipcode):
+        driver.get(f"https://www.movoto.com/demographics/{state.lower()}/{zipcode}/")
+        time.sleep(3)
+        try:
+            element = driver.find_elements_by_xpath("//td")
+            els = []
+            for ele in element:
+                els.append(ele.text)
+            demo = dict(zip(els[::2], els[1::2]))
+            demo.update({"zipcode":zipcode})
+            time.sleep(2)
+            return pd.DataFrame([demo])
+        except Exception as e:
+            emailer.send_email("Error!", f"{e}, {state}, {zipcode}")
+            return pd.DataFrame()
+    
+    def get_all_area_dem(self, df):
+        df1 = pd.DataFrame()
+        driver = webdriver.Safari()
+        for num, row in tqdm(df.iterrows()):
+#             driver = webdriver.Chrome(self._driver_location)
+            num += 1
+            df1 = pd.concat([df1, self.get_area_dem(driver, row.location_6, row.location_4)], axis=0, sort=False)
+            automatic_save(True, df1, num, filename="demo", max_count=100, email_me=True)
+        driver.close()
+        return df1
+    
         
         
