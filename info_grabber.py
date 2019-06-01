@@ -73,7 +73,8 @@ class ApiCaller(object):
     @client_id.deleter
     def client_id(self):
         self._client_id = None
-        
+     
+    # collect the information from the yelp API
     def gather_data(self, search_term, location, limit=50):    
         term = search_term
         location = location
@@ -106,6 +107,7 @@ class ApiCaller(object):
                 print(count)
         return data
     
+    # collect information for various search terms for a specific location
     def gather_single_loc_data(self, terms, location):
         data_lst = []
         for term in terms:
@@ -113,6 +115,7 @@ class ApiCaller(object):
             time.sleep(1)
         return data_lst
     
+    # collect information for various search terms and location
     def gather_many_loc_data(self, terms, locations):
         data_lst = []
         for location in locations:
@@ -155,6 +158,7 @@ class TutoringDataGrabber(ApiCaller):
     def del_term(self, term):
         self._terms.remove(term)
         
+    # collect information specific to tutoring companies
     def gather_tutoring_data(self):
         data = []
         data += self.gather_many_loc_data(self.terms, self.locations)
@@ -166,7 +170,7 @@ class YelpScraper(object):
     def __init__(self, driver_location):
         self._driver_location = driver_location
     
-            
+    # collect data using selenium from yelp        
     def get_specific_data(self, driver, class_name, att="title", get_info="class"):
         elems = driver.find_elements_by_class_name(class_name)
         final = []
