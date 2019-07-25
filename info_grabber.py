@@ -356,7 +356,17 @@ class TutoringScraper(YelpScraper):
     
     def get_all_area_dem(self, df):
         df1 = pd.DataFrame()
-        driver = webdriver.Safari()
+        try:
+            driver = webdriver.Chrome(self._driver_location)
+        except:
+            try:
+                driver = webdriver.Safari()
+            except:
+                try:
+                    driver = webdriver.Firefox()
+                except:
+                    return("Download Selenium Drivers")
+                
         for num, row in tqdm(df.iterrows()):
 #             driver = webdriver.Chrome(self._driver_location)
             num += 1
